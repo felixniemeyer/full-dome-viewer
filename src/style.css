@@ -1,0 +1,26 @@
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+
+  background-color: #000;
+
+  color: #fff; 
+}
+
+#canvas {
+  position: absolute; 
+
+  left: 0; 
+  top: 0; 
+
+  width: 100vw;
+  height: 100vh;
+}
+
+#selector {
+  position: absolute; 
+  left: 2rem; 
+  top: 2rem; 
+  z-index: 1;
+}
