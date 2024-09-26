@@ -96,7 +96,7 @@ export default class FullDomeSimulator {
     let normY = Math.sqrt(resY / resX)
     let normX = 1 / normY
 
-    const zoom = 1.5
+    const zoom = 1 // TBD: fix this in conjunction with viewAngle
     normX /= zoom
     normY /= zoom
 
@@ -109,8 +109,8 @@ export default class FullDomeSimulator {
     gl.uniform2fv(this.uniLocs.norm, [normX, normY])
 
     // calculate view angles, 
-    this.viewAngleX = Math.asin(normX) * 2
-    this.viewAngleY = Math.asin(normY) * 2
+    this.viewAngleX = Math.asin(normX / Math.sqrt(1 + normX ** 2)) * 2
+    this.viewAngleY = Math.asin(normY / Math.sqrt(1 + normY ** 2)) * 2
   }
 
   mouseDown = false
@@ -175,7 +175,8 @@ export default class FullDomeSimulator {
         }
       })
 
-      this.canvas.addEventListener('resize', this.resize.bind(this))
+
+      window.addEventListener('resize', this.resize.bind(this))
       this.resize()
 
       this.started = true
