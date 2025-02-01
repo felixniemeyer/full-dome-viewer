@@ -7,7 +7,7 @@ import { RectVao } from './geometry'
 
 import { mat3, vec3 } from 'gl-matrix'
 
-import { loadImage } from './tex-utils'
+import { loadVideo } from './tex-utils'
 
 const up = vec3.fromValues(0, 1, 0)
 const front = vec3.fromValues(0, 0, 1)
@@ -45,11 +45,16 @@ export default class FullDomeSimulator {
 
     this.domeTex = gl.createTexture()!
     gl.bindTexture(gl.TEXTURE_2D, this.domeTex)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]))
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1)
 
-    loadImage('test.png').then(this.setImage.bind(this))
+    loadVideo('./test-video.mp4').then(video => {
+      this.setVideo(video)
+    })
   }
 
   setUpWebGL(canvas: HTMLCanvasElement) {
@@ -68,9 +73,15 @@ export default class FullDomeSimulator {
   }
 
   setImage(img: TexImageSource) {
+    this.video = null
     const gl = this.gl
     gl.bindTexture(gl.TEXTURE_2D, this.domeTex)
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img)
+  }
+
+  private video: HTMLVideoElement | null = null
+  setVideo(video: HTMLVideoElement) {
+    this.video = video
   }
 
   res = [1, 1]
@@ -200,6 +211,9 @@ export default class FullDomeSimulator {
 
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, this.domeTex)
+    if(this.video !== null) {
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.video)
+    }
 
     gl.uniformMatrix3fv(this.uniLocs.rotation, false, this.rotationMatrix)
 

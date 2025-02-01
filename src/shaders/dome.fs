@@ -17,10 +17,12 @@ void main() {
   look = normalize(look); 
   look = rotation * look;
 
-  rgba.rgb = mod(look * 10., vec3(1.)); 
+  rgba.rgb = look.y < -0.1 ? vec3(-look.y * 0.2) : 
+    (look.y < 0.0 ? vec3(0.1 + look.y) : texture(domeTex, look.xz * 0.5 + 0.5).rgb); 
 
-  if(look.y > 0.0) {
-    rgba = texture(domeTex, look.xz * 0.5 + 0.5);
-  }
+  // invert
+  // rgba.rgb = 1. - rgba.rgb; 
+
+  rgba.a = 1.0;
 }
 
