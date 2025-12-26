@@ -40,6 +40,7 @@ export default class FullDomeSimulator {
 
     gl.useProgram(this.program)
     gl.uniform1i(this.uniLocs.domeTex, 0)
+    gl.uniform1f(this.uniLocs.domeScale, 0.5)
 
     this.rectVao = new RectVao(gl)
 
@@ -82,6 +83,12 @@ export default class FullDomeSimulator {
   private video: HTMLVideoElement | null = null
   setVideo(video: HTMLVideoElement) {
     this.video = video
+  }
+
+  setDomeScale(scale: number) {
+    const gl = this.gl
+    gl.useProgram(this.program)
+    gl.uniform1f(this.uniLocs.domeScale, scale)
   }
 
   res = [1, 1]
