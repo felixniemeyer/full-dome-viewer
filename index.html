@@ -8,13 +8,27 @@
   </head>
   <body>
     <canvas id="canvas"></canvas>
-    <div id="selector">
-      <input type="file" id="file" accept="image/*" />
+    <div id="selector" class="selector">
+      <label for="file">
+        Click to upload a domemaster file (image or video)
+        <input type="file" id="file" accept="image/*, video/*" />
+      </label>
     </div>
-    <div id="controls" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); padding: 10px; color: white;">
-      <label for="dome-scale-slider">Scale:</label>
-      <input type="range" id="dome-scale-slider" min="0.48" max="0.5" step="0.0001" value="0.5" style="width: 300px;" />
-      <input type="text" id="dome-scale-text" value="0.5" style="width: 60px;" />
+    <div id="loading" class="loading" hidden>
+      <span class="spinner"></span>
+      <span id="loading-text">Loading…</span>
+    </div>
+    <div id="timeline" class="timeline">
+      <input type="range" id="time-slider" min="0" max="1" step="0.001" value="0" />
+      <span id="time-label">0:00 | 0:00</span>
+    </div>
+    <div id="controls" class="controls">
+      <label for="fov-slider">FOV (°):</label>
+      <input type="range" id="fov-slider" min="10" max="120" step="0.1" value="90" />
+      <input type="text" id="fov-text" value="90" />
+      <br/>
+      <label for="audio-checkbox">Audio:</label>
+      <input type="checkbox" id="audio-checkbox" />
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

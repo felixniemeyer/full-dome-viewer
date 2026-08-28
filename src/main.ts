@@ -8,64 +8,144 @@ import { loadImage, loadVideo } from './tex-utils'
 
 function main() {
   const input = document.getElementById('file')
-  if(input !== null) {
-    // on file selection, load the image
+  const audioCheckbox = document.getElementById('audio-checkbox') as HTMLInputElement
+  let currentVideo: HTMLVideoElement | null = null
+  let audioEnabled = false
+
+  if (audioCheckbox) {
+    audioEnabled = audioCheckbox.checked
+    audioCheckbox.addEventListener('change', () => {
+      audioEnabled = audioCheckbox.checked
+      if (currentVideo) {
+        currentVideo.muted = !audioEnabled
+      }
+    })
+  }
+
+  // UI state
+  const selector = document.getElementById('selector')
+  const label = selector?.querySelector('label')
+  const uploadText = 'Click to upload a domemaster file (image or video)'
+  function setSelectorUploaded(uploaded: boolean) {
+    if (!selector || !label) return
+    selector.classList.toggle('uploaded', uploaded)
+    if (label.firstChild && label.firstChild.nodeType === Node.TEXT_NODE) {
+      label.firstChild.textContent = uploaded ? 'Upload different medium' : uploadText
+    }
+  }
+  setSelectorUploaded(false)
+
+  // Timeline (video playback)
+  const timeline = document.getElementById('timeline')
+  const timeSlider = document.getElementById('time-slider') as HTMLInputElement
+  const timeLabel = document.getElementById('time-label')
+
+  const formatTime = (t: number) => {
+    if (!isFinite(t)) t = 0
+    const m = Math.floor(t / 60)
+    const s = Math.floor(t % 60)
+    return `${m}:${s.toString().padStart(2, '0')}`
+  }
+  const updateTimeLabel = () => {
+    if (timeLabel && currentVideo) {
+      timeLabel.textContent = `${formatTime(currentVideo.currentTime)} | ${formatTime(currentVideo.duration)}`
+    }
+  }
+  if (timeSlider) {
+    timeSlider.addEventListener('input', () => {
+      if (currentVideo) {
+        currentVideo.currentTime = parseFloat(timeSlider.value)
+        updateTimeLabel()
+      }
+    })
+  }
+  const showTimeline = (video: HTMLVideoElement | null) => {
+    if (video && timeline && timeSlider) {
+      timeline.classList.add('visible')
+      timeSlider.max = video.duration.toString()
+      timeSlider.value = video.currentTime.toString()
+      updateTimeLabel()
+      video.addEventListener('timeupdate', () => {
+        timeSlider.value = video.currentTime.toString()
+        updateTimeLabel()
+      })
+    } else if (timeline) {
+      timeline.classList.remove('visible')
+    }
+  }
+
+  if (input !== null) {
     input.setAttribute('accept', 'image/*, video/*')
     input.addEventListener('change', async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
-      if(file !== undefined) {
-        // if image
-        if(file.type.match('image.*')) {
+      if (file !== undefined) {
+        if (file.type.match('image.*')) {
           const objURL = URL.createObjectURL(file)
-          loadImage(objURL).then(fds.setImage.bind(fds))
+          loadImage(objURL).then(fds.setImage.bind(fds)).then(() => {
+            currentVideo = null
+            showTimeline(null)
+            setSelectorUploaded(true)
+          })
         } else if (file.type.match('video.*')) {
           const objURL = URL.createObjectURL(file)
-          loadVideo(objURL).then(fds.setVideo.bind(fds))
+          loadVideo(objURL).then((video) => {
+            currentVideo = video
+            fds.setVideo(video)
+            video.muted = !audioEnabled
+            showTimeline(video)
+            setSelectorUploaded(true)
+          })
         }
       }
     })
   }
-  
-  setupDomeScaleControls(fds)
+
+  setupFovControls(fds)
   fds.start()
 }
 
-function setupDomeScaleControls(fds: FullDomeSimulator) {
-  const slider = document.getElementById('dome-scale-slider') as HTMLInputElement
-  const text = document.getElementById('dome-scale-text') as HTMLInputElement
+function setupFovControls(fds: FullDomeSimulator) {
+  const slider = document.getElementById('fov-slider') as HTMLInputElement
+  const text = document.getElementById('fov-text') as HTMLInputElement
 
   if (!slider || !text) return
 
-  const updateRange = (val: number) => {
-    const range = 0.01
-    slider.min = (val - range).toFixed(5)
-    slider.max = (val + range).toFixed(5)
-    slider.value = val.toString()
+  // Fixed range
+  slider.min = '10'
+  slider.max = '120'
+  slider.step = '0.1'
+  slider.value = '90'
+  text.value = '90'
+
+  const applyFov = (val: number) => {
+    const clamped = Math.min(120, Math.max(10, val))
+    fds.setFov(clamped)
+    slider.value = clamped.toFixed(1)
+    text.value = clamped.toFixed(1)
   }
 
   // Slider interaction
   slider.addEventListener('input', () => {
-    const val = parseFloat(slider.value)
-    fds.setDomeScale(val)
-    text.value = val.toString()
-  })
-
-  // When slider is released/set
-  slider.addEventListener('change', () => {
-    const val = parseFloat(slider.value)
-    updateRange(val)
+    applyFov(parseFloat(slider.value))
   })
 
   // Text interaction
   text.addEventListener('change', () => {
     const val = parseFloat(text.value)
     if (!isNaN(val)) {
-      fds.setDomeScale(val)
-      slider.value = val.toString() // Update slider visual if within range
-      updateRange(val) // Reset range around new value
+      applyFov(val)
     }
   })
+
+  // Mouse wheel on canvas: zoom in/out by adjusting FOV
+  const canvas = document.getElementById('canvas')
+  if (canvas) {
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault()
+      const step = (e.deltaY > 0 ? 1 : -1) * 2 // degrees per wheel tick
+      applyFov(parseFloat(slider.value) + step)
+    }, { passive: false })
+  }
 }
 
 window.onload = main
-

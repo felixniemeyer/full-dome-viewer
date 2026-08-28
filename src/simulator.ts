@@ -7,7 +7,6 @@ import { RectVao } from './geometry'
 
 import { mat3, vec3 } from 'gl-matrix'
 
-import { loadVideo } from './tex-utils'
 
 const up = vec3.fromValues(0, 1, 0)
 const front = vec3.fromValues(0, 0, 1)
@@ -30,6 +29,7 @@ export default class FullDomeSimulator {
   rectVao: RectVao
 
   domeTex: WebGLTexture
+  fovDeg: number = 90;
 
   constructor() {
     this.canvas = document.getElementById("canvas") as HTMLCanvasElement
@@ -53,9 +53,21 @@ export default class FullDomeSimulator {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1)
 
-    loadVideo('./test-video.mp4').then(video => {
-      this.setVideo(video)
-    })
+
+    // Set initial rotation based on yRot (pitch up)
+    vec3.rotateX(rFront, front, [0, 0, 0], this.yRot)
+    vec3.rotateY(rFront, rFront, [0, 0, 0], this.xRot)
+    vec3.cross(rRight, rFront, up)
+    vec3.normalize(rRight, rRight)
+    vec3.cross(rUp, rRight, rFront)
+    vec3.normalize(rUp, rUp)
+    // update rotation matrix
+    mat3.set(
+      this.rotationMatrix,
+      rRight[0], rRight[1], rRight[2],
+      rUp[0], rUp[1], rUp[2],
+      rFront[0], rFront[1], rFront[2]
+    )
   }
 
   setUpWebGL(canvas: HTMLCanvasElement) {
@@ -85,6 +97,17 @@ export default class FullDomeSimulator {
     this.video = video
   }
 
+  setFov(fovDeg: number) {
+    this.fovDeg = fovDeg
+    const gl = this.gl
+    gl.useProgram(this.program)
+    // compute norm based on current fov and canvas aspect
+    const fovRad = (this.fovDeg * Math.PI) / 180.0
+    const normX = Math.tan(fovRad / 2.0)
+    const normY = normX * (this.canvas.height / this.canvas.width)
+    gl.uniform2fv(this.uniLocs.norm, [normX, normY])
+  }
+
   setDomeScale(scale: number) {
     const gl = this.gl
     gl.useProgram(this.program)
@@ -111,31 +134,29 @@ export default class FullDomeSimulator {
     // => ry * ry * resX / resY = 1
     // => ry = sqrt(resY / resX)
     // rx = 1 / ry
-    let normY = Math.sqrt(resY / resX)
-    let normX = 1 / normY
-
-    const zoom = 1 // TBD: fix this in conjunction with viewAngle
-    normX /= zoom
-    normY /= zoom
-
     const gl = this.gl
     gl.useProgram(this.program)
-
     gl.uniform2fv(this.uniLocs.res, [resX, resY])
+
+    // compute norm based on FOV and aspect ratio
+    const fovRad = (this.fovDeg * Math.PI) / 180.0
+    const normX = Math.tan(fovRad / 2.0) // horizontal scale
+    const normY = normX * (this.canvas.height / this.canvas.width) // vertical scale for aspect
 
     console.log('norm', normX, normY)
     gl.uniform2fv(this.uniLocs.norm, [normX, normY])
 
-    // calculate view angles, 
-    this.viewAngleX = Math.asin(normX / Math.sqrt(1 + normX ** 2)) * 2
-    this.viewAngleY = Math.asin(normY / Math.sqrt(1 + normY ** 2)) * 2
+    // calculate view angles for mouse dragging
+    this.viewAngleX = Math.asin(normX / Math.sqrt(1.0 + normX * normX)) * 2.0
+    this.viewAngleY = Math.asin(normY / Math.sqrt(1.0 + normY * normY)) * 2.0
   }
 
   mouseDown = false
   mX = 0
   mY = 0
   xRot = 0
-  yRot = 0
+  yRot = -Math.PI/6
+  
   async start() {
     if (window.self === window.top) { // if not in iframe
       document.body.style.backgroundColor = "#222"
