@@ -170,7 +170,7 @@ export default class FullDomeSimulator {
   mouseDown = false
   mX = 0
   mY = 0
-  xRot = 0
+  xRot = Math.PI
   yRot = -Math.PI/6
   
   async start() {

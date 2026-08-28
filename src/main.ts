@@ -140,6 +140,25 @@ function main() {
     })
   }
 
+  // Space bar to toggle play/pause
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      // Ignore if focus is on an input or textarea
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return
+      }
+      e.preventDefault()
+      if (currentVideo) {
+        if (currentVideo.paused) {
+          currentVideo.play()
+        } else {
+          currentVideo.pause()
+        }
+      }
+    }
+  })
+
   setupFovControls(fds)
   fds.start()
 

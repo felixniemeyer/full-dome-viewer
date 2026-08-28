@@ -86,10 +86,11 @@ body {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: rgba(0,0,0,0.5);
+  background: #4448;
   padding: 10px;
   color: white;
   font-family: sans-serif;
+  border-radius: 8px;
   z-index: 2;
 }
 .controls label {
@@ -107,4 +108,7 @@ body {
 .controls br {
   display: block;
   margin-top: 10px;
+}
+.controls:hover {
+  background: #5558;
 }
