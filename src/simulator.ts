@@ -2,6 +2,8 @@ import { compileShaders, makeUniformLocationAccessor } from './shader-tools'
 
 import domeVs from './shaders/dome.vs'
 import domeFs from './shaders/dome.fs'
+import minimapVs from './shaders/minimap.vs'
+import minimapFs from './shaders/minimap.fs'
 
 import { RectVao } from './geometry'
 
@@ -30,6 +32,11 @@ export default class FullDomeSimulator {
 
   domeTex: WebGLTexture
   fovDeg: number = 90;
+  minimapProgram: WebGLProgram;
+  minimapUniLocs: any;
+  textureReady: boolean = false;
+  normX: number = 0.0;
+  normY: number = 0.0;
 
   constructor() {
     this.canvas = document.getElementById("canvas") as HTMLCanvasElement
@@ -43,6 +50,10 @@ export default class FullDomeSimulator {
     gl.uniform1f(this.uniLocs.domeScale, 0.5)
 
     this.rectVao = new RectVao(gl)
+
+    // minimap program
+    this.minimapProgram = compileShaders(gl, minimapVs, minimapFs)
+    this.minimapUniLocs = makeUniformLocationAccessor(gl, this.minimapProgram)
 
     this.domeTex = gl.createTexture()!
     gl.bindTexture(gl.TEXTURE_2D, this.domeTex)
@@ -90,11 +101,13 @@ export default class FullDomeSimulator {
     const gl = this.gl
     gl.bindTexture(gl.TEXTURE_2D, this.domeTex)
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img)
+    this.textureReady = true
   }
 
   private video: HTMLVideoElement | null = null
   setVideo(video: HTMLVideoElement) {
     this.video = video
+    this.textureReady = true
   }
 
   setFov(fovDeg: number) {
@@ -106,6 +119,8 @@ export default class FullDomeSimulator {
     const normX = Math.tan(fovRad / 2.0)
     const normY = normX * (this.canvas.height / this.canvas.width)
     gl.uniform2fv(this.uniLocs.norm, [normX, normY])
+    this.normX = normX
+    this.normY = normY
   }
 
   setDomeScale(scale: number) {
@@ -145,6 +160,8 @@ export default class FullDomeSimulator {
 
     console.log('norm', normX, normY)
     gl.uniform2fv(this.uniLocs.norm, [normX, normY])
+    this.normX = normX
+    this.normY = normY
 
     // calculate view angles for mouse dragging
     this.viewAngleX = Math.asin(normX / Math.sqrt(1.0 + normX * normX)) * 2.0
@@ -246,5 +263,24 @@ export default class FullDomeSimulator {
     gl.uniformMatrix3fv(this.uniLocs.rotation, false, this.rotationMatrix)
 
     this.rectVao.draw()
+
+    // Minimap
+    if (this.textureReady) {
+      const m = Math.min(0.25 * this.canvas.width, 0.25 * this.canvas.height);
+      const margin = 10;
+      const offsetX = this.canvas.width - m - margin; // distance from right
+      const offsetY = margin; // distance from bottom
+      gl.viewport(offsetX, offsetY, m, m);
+      gl.useProgram(this.minimapProgram);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, this.domeTex);
+      gl.uniform1i(this.minimapUniLocs.domeTex, 0);
+      gl.uniform2f(this.minimapUniLocs.u_offset, offsetX, offsetY);
+      gl.uniform2f(this.minimapUniLocs.u_size, m, m);
+      gl.uniform2f(this.minimapUniLocs.u_norm, this.normX, this.normY);
+      gl.uniformMatrix3fv(this.minimapUniLocs.u_rotation, false, this.rotationMatrix);
+      gl.uniform4f(this.minimapUniLocs.u_highlightColor, 1.0, 1.0, 1.0, 0.5);
+      this.rectVao.draw()
+    }
   }
 }

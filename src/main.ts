@@ -10,10 +10,10 @@ function main() {
   const input = document.getElementById('file')
   const audioCheckbox = document.getElementById('audio-checkbox') as HTMLInputElement
   let currentVideo: HTMLVideoElement | null = null
-  let audioEnabled = false
+  let audioEnabled = true  // enable audio by default
 
   if (audioCheckbox) {
-    audioEnabled = audioCheckbox.checked
+    audioCheckbox.checked = audioEnabled
     audioCheckbox.addEventListener('change', () => {
       audioEnabled = audioCheckbox.checked
       if (currentVideo) {
@@ -37,6 +37,7 @@ function main() {
 
   // Timeline (video playback)
   const timeline = document.getElementById('timeline')
+  const playPauseBtn = document.getElementById('play-pause-button') as HTMLButtonElement
   const timeSlider = document.getElementById('time-slider') as HTMLInputElement
   const timeLabel = document.getElementById('time-label')
 
@@ -94,6 +95,25 @@ function main() {
             video.muted = !audioEnabled
             showTimeline(video)
             setSelectorUploaded(true)
+            // Setup play/pause button
+            if (playPauseBtn) {
+              playPauseBtn.textContent = video.paused ? '▶️' : '⏸️'
+              playPauseBtn.onclick = () => {
+                if (video.paused) {
+                  video.play()
+                } else {
+                  video.pause()
+                }
+              }
+              const updateBtn = () => {
+                playPauseBtn.textContent = video.paused ? '▶️' : '⏸️'
+              }
+              video.addEventListener('play', updateBtn)
+              video.addEventListener('pause', updateBtn)
+              video.addEventListener('ended', () => {
+                playPauseBtn.textContent = '▶️'
+              })
+            }
           })
         }
       }
