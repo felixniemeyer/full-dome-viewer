@@ -10,6 +10,7 @@ function main() {
   const input = document.getElementById('file')
   const audioCheckbox = document.getElementById('audio-checkbox') as HTMLInputElement
   let currentVideo: HTMLVideoElement | null = null
+  let prevObjURL: string | null = null
   let audioEnabled = true  // enable audio by default
 
   if (audioCheckbox) {
@@ -78,50 +79,77 @@ function main() {
   if (input !== null) {
     input.setAttribute('accept', 'image/*, video/*')
     input.addEventListener('change', async (e) => {
+      // Clean up previous media
+      if (prevObjURL) {
+        URL.revokeObjectURL(prevObjURL)
+        prevObjURL = null
+      }
+      if (currentVideo) {
+        currentVideo.pause()
+        currentVideo = null
+      }
+      fds.textureReady = false // hide controls while loading
       const file = (e.target as HTMLInputElement).files?.[0]
-      if (file !== undefined) {
-        if (file.type.match('image.*')) {
-          const objURL = URL.createObjectURL(file)
-          loadImage(objURL).then(fds.setImage.bind(fds)).then(() => {
-            currentVideo = null
-            showTimeline(null)
-            setSelectorUploaded(true)
-          })
-        } else if (file.type.match('video.*')) {
-          const objURL = URL.createObjectURL(file)
-          loadVideo(objURL).then((video) => {
-            currentVideo = video
-            fds.setVideo(video)
-            video.muted = !audioEnabled
-            showTimeline(video)
-            setSelectorUploaded(true)
-            // Setup play/pause button
-            if (playPauseBtn) {
-              playPauseBtn.textContent = video.paused ? '▶️' : '⏸️'
-              playPauseBtn.onclick = () => {
-                if (video.paused) {
-                  video.play()
-                } else {
-                  video.pause()
-                }
+      if (file === undefined) {
+        showTimeline(null)
+        setSelectorUploaded(false)
+        return
+      }
+      if (file.type.match('image.*')) {
+        const objURL = URL.createObjectURL(file)
+        prevObjURL = objURL
+        loadImage(objURL).then(fds.setImage.bind(fds)).then(() => {
+          currentVideo = null
+          showTimeline(null)
+          setSelectorUploaded(true)
+        }).catch(err => {
+          console.error('Failed to load image:', err)
+        })
+      } else if (file.type.match('video.*')) {
+        const objURL = URL.createObjectURL(file)
+        prevObjURL = objURL
+        loadVideo(objURL).then((video) => {
+          currentVideo = video
+          fds.setVideo(video)
+          video.muted = !audioEnabled
+          showTimeline(video)
+          setSelectorUploaded(true)
+          // Setup play/pause button
+          if (playPauseBtn) {
+            playPauseBtn.textContent = video.paused ? '\u25BA' : '\u23F8'
+            playPauseBtn.onclick = () => {
+              if (video.paused) {
+                video.play()
+              } else {
+                video.pause()
               }
-              const updateBtn = () => {
-                playPauseBtn.textContent = video.paused ? '▶️' : '⏸️'
-              }
-              video.addEventListener('play', updateBtn)
-              video.addEventListener('pause', updateBtn)
-              video.addEventListener('ended', () => {
-                playPauseBtn.textContent = '▶️'
-              })
             }
-          })
-        }
+            const updateBtn = () => {
+              playPauseBtn.textContent = video.paused ? '\u25BA' : '\u23F8'
+            }
+            video.addEventListener('play', updateBtn)
+            video.addEventListener('pause', updateBtn)
+            video.addEventListener('ended', () => {
+              playPauseBtn.textContent = '\u25BA'
+            })
+          }
+        }).catch(err => {
+          console.error('Failed to load video:', err)
+        })
       }
     })
   }
 
   setupFovControls(fds)
   fds.start()
+
+  // Hide/show controls based on whether media is loaded
+  const controlsEl = document.getElementById('controls')
+  if (controlsEl) {
+    setInterval(() => {
+      controlsEl.style.display = fds.textureReady ? 'block' : 'none'
+    }, 100)
+  }
 }
 
 function setupFovControls(fds: FullDomeSimulator) {

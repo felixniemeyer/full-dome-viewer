@@ -24,52 +24,42 @@ void main() {
     // Inverse domeMasterUv to get the direction after rotation (look_rot)
     // domeMasterUv: UV = dir * r * domeScale + 0.5, where r = theta * (2.0/PI), dir = normalize(xz), domeScale = 0.5
     vec2 uv2c = uv - 0.5;
-    float r = length(uv2c) / 0.5; // because domeScale = 0.5
+    float len = length(uv2c);
     vec2 dir;
-    if (r > 0.0) {
-        dir = uv2c / r;
+    if (len > 0.0) {
+        dir = uv2c / len; // unit vector in xz plane
     } else {
         dir = vec2(0.0); // direction undefined at center
     }
-    float theta = r * (3.141592653589793 / 2.0); // theta = r * PI/2
+    // r = theta * (2.0/PI)  =>  theta = len * PI
+    float theta = len * 3.141592653589793;
     // Reconstruct look_rot: look.y = cos(theta), look.xz = dir * sin(theta)
     vec3 look_rot;
     look_rot.x = dir.x * sin(theta);
     look_rot.y = cos(theta);
     look_rot.z = dir.y * sin(theta);
-    // look_rot should be unit length (since dir is unit and sin^2+cos^2=1)
+    // look_rot is unit length (dir unit, sin^2+cos^2=1)
 
-    // Undo rotation: look_norm = transpose(u_rotation) * look_rot
+    // Undo rotation: look_pre = transpose(u_rotation) * look_rot
     // Since u_rotation is a pure rotation matrix, its inverse is its transpose.
-    vec3 look_norm;
-    look_norm.x = u_rotation[0][0] * look_rot.x + u_rotation[1][0] * look_rot.y + u_rotation[2][0] * look_rot.z;
-    look_norm.y = u_rotation[0][1] * look_rot.x + u_rotation[1][1] * look_rot.y + u_rotation[2][1] * look_rot.z;
-    look_norm.z = u_rotation[0][2] * look_rot.x + u_rotation[1][2] * look_rot.y + u_rotation[2][2] * look_rot.z;
-    // look_norm should be unit length as well
+    vec3 look_pre;
+    look_pre.x = u_rotation[0][0] * look_rot.x + u_rotation[0][1] * look_rot.y + u_rotation[0][2] * look_rot.z;
+    look_pre.y = u_rotation[1][0] * look_rot.x + u_rotation[1][1] * look_rot.y + u_rotation[1][2] * look_rot.z;
+    look_pre.z = u_rotation[2][0] * look_rot.x + u_rotation[2][1] * look_rot.y + u_rotation[2][2] * look_rot.z;
+    // look_pre should be unit length as well
 
-    // Recover xy from look_norm: look_norm = s * vec3(xy * u_norm, 1.0) for some s > 0
+    // Viewport indicator: check if the point is within the current view
     bool visible = false;
-    vec2 xy_candidate;
-    if (look_norm.z > 0.0) {
-        float s = look_norm.z;
-        xy_candidate.x = look_norm.x / (s * u_norm.x);
-        xy_candidate.y = look_norm.y / (s * u_norm.y);
-        if (abs(xy_candidate.x) <= 1.0 && abs(xy_candidate.y) <= 1.0) {
-            visible = true;
-        }
+    if (look_pre.z > 0.0) {
+        vec2 ndc = look_pre.xy / (look_pre.z * u_norm);
+        visible = abs(ndc.x) <= 1.0 && abs(ndc.y) <= 1.0;
     }
 
-    // Darken non-visible regions
-    if (!visible) {
-        col *= 0.2;
-    }
-
-    // Optional: draw a subtle border around the viewport
-    float edge = 0.01; // border thickness in xy space
-    bool nearEdge = (abs(xy_candidate.x) > 1.0 - edge && abs(xy_candidate.x) <= 1.0) ||
-                    (abs(xy_candidate.y) > 1.0 - edge && abs(xy_candidate.y) <= 1.0);
-    if (nearEdge && visible) {
-        col = mix(col, vec4(1.0, 1.0, 1.0, 0.5), 0.5);
+    // Adjust brightness: +0.3 for visible, -0.3 for non-visible
+    if (visible) {
+        col += 0.3;
+    } else {
+        col -= 0.3;
     }
 
     rgba = col;

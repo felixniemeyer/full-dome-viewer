@@ -107,7 +107,6 @@ export default class FullDomeSimulator {
   private video: HTMLVideoElement | null = null
   setVideo(video: HTMLVideoElement) {
     this.video = video
-    this.textureReady = true
   }
 
   setFov(fovDeg: number) {
@@ -256,8 +255,9 @@ export default class FullDomeSimulator {
 
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, this.domeTex)
-    if(this.video !== null) {
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.video)
+    if (this.video !== null && this.video.videoWidth > 0 && this.video.videoHeight > 0 && this.video.readyState >= 2) {
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.video);
+      this.textureReady = true;
     }
 
     gl.uniformMatrix3fv(this.uniLocs.rotation, false, this.rotationMatrix)

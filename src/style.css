@@ -58,8 +58,7 @@ body {
 .timeline {
   position: fixed;
   bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 10px;
   display: none;
   align-items: center;
   gap: 10px;
